@@ -1,3 +1,4 @@
+{# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): says that expiry notifications do not go out from a copy. VoucherVault is GPL-3.0 (LICENSE.md). #}
 {% extends "base.html" %}
 {% load i18n %}
 {% load static %}
@@ -20,6 +21,9 @@
         <div class="card-body">
           <h6 class="card-title">{% trans "Configure Your Apprise URLs" %}</h6>
           <span>{% trans "These URLs will be used to send out personal expiry notifications. Leave empty to disable notifications." %}</span><p>
+          {% if tofu_expiry_alerts_off %}
+          <div class="alert alert-warning" role="status">Expiry notifications do not go out from this copy: they need a background worker that runs all the time, which Tofu's hosting does not have. The Test button still sends one notification now. Check expiry dates in the inventory's "Expiring soon" filter.</div>
+          {% endif %}
           <p><span class="badge bg-info"><span class="badge bg-info">{% trans "Threshold" %}: {{ "EXPIRY_THRESHOLD"|env }}d</span></span></p>
           <!-- Apprise URLs Form -->
           <form method="POST" action="">

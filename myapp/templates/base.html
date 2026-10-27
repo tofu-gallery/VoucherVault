@@ -1,3 +1,4 @@
+{# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): the footer links to the copy's source. VoucherVault is GPL-3.0 (LICENSE.md). #}
 {% load i18n %}
 {% load static %}
 {% load extras %}
@@ -380,6 +381,11 @@
     <div class="credits">
       Developed by <a href="https://github.com/l4rm4nd">LRVT</a> | Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
     </div>
+    {% if tofu_source_url %}
+    <div class="credits tofu-source">
+      VoucherVault is free software (GPL-3.0): <a href="{{ tofu_source_url }}" rel="noopener">Source code</a>
+    </div>
+    {% endif %}
 
   </footer><!-- End Footer -->
 

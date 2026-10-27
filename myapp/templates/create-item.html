@@ -1,3 +1,4 @@
+{# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): no file attachment where the copy cannot keep files, and a note on shop logos. VoucherVault is GPL-3.0 (LICENSE.md). #}
 {% extends "base.html" %}
 {% load i18n %}
 {% load static %}
@@ -720,12 +721,21 @@ body.dark-mode .error-alert {
               <input type="text" class="modern-input" id="logo_slug" name="logo_slug" 
                      placeholder="amazon.com" 
                      value='{{ form.logo_slug.value|default_if_none:"" }}'>
+              {% if tofu_copy and not tofu_logo_token %}
+              <div class="form-text">{% trans "Shop logos show once this app's owner adds their own logo.dev key as LOGO_DEV_TOKEN on the app's Keys & settings page on Tofu. Until then, the code itself stands in for the logo." %}</div>
+              {% endif %}
             </div>
             
+            {% if not tofu_copy or tofu_uploads %}
             <div class="form-group">
               <label class="form-label" for="file">{% trans "Upload File" %}</label>
               <input type="file" id="file" name="file" class="modern-input">
             </div>
+            {% else %}
+            <div class="form-group">
+              <div class="form-text">{% trans "Attaching a file is off in this copy: it has no lasting disk to keep files on. Write what you need in the description." %}</div>
+            </div>
+            {% endif %}
           </div>
           
           <!-- Submit Button -->

@@ -1,3 +1,5 @@
+# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): the item form has no file field where
+# the copy cannot keep files (myapp/tofu.py). VoucherVault is GPL-3.0 (LICENSE.md).
 from django import forms
 from .models import *
 import os
@@ -10,6 +12,7 @@ from .models import *
 from django.utils.translation import gettext_lazy as _
 from datetime import timedelta
 from django.utils import timezone
+from .tofu import uploads_enabled
 
 class ItemForm(forms.ModelForm):
     file = forms.FileField(required=False)
@@ -39,6 +42,10 @@ class ItemForm(forms.ModelForm):
 
         # Make expiry_date optional
         self.fields['expiry_date'].required = False
+
+        # Tofu: no attached file where the copy has no lasting disk to keep it on.
+        if not uploads_enabled():
+            self.fields.pop('file', None)
 
     def clean_tile_color(self):
         color = self.cleaned_data.get('tile_color')

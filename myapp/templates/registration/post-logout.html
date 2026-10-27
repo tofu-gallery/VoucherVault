@@ -1,3 +1,4 @@
+{# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): the source link, and the offline cache cleared on signing out (upstream issue #119). VoucherVault is GPL-3.0 (LICENSE.md). #}
 {% load static %}
 {% load extras %}
 {% load i18n %}
@@ -140,7 +141,33 @@
             <input type="hidden" name="next" value="{{next}}" />
             <button type="submit" class="btn btn-primary"><i class="bi bi-box-arrow-in-right toggle-sidebar-btn"></i> Back to Login</button>
         </form>
+        {% if tofu_source_url %}
+        <p class="tofu-source" style="text-align: center; margin: 18px 0 0; font-size: 0.85rem; color: #bbbbbb;">
+            VoucherVault is free software (GPL-3.0). <a href="{{ tofu_source_url }}" rel="noopener" style="color: #00c9ff;">Source code</a>
+        </p>
+        {% endif %}
     </div>
+    {% if tofu_copy %}
+    <script>
+        // Tofu: a signed-out browser keeps no copy of the previous person's pages, codes or PINs (upstream issue #119):
+        // the offline cache, the service worker's own caches and the offline database are cleared here.
+        (function () {
+            try {
+                if (window.caches) {
+                    caches.keys().then(function (names) {
+                        names.filter(function (n) { return n.indexOf('vouchervault-') === 0; })
+                             .forEach(function (n) { caches.delete(n); });
+                    });
+                }
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+                }
+                localStorage.removeItem('offline_cache_timestamp');
+                if (window.indexedDB) { indexedDB.deleteDatabase('VoucherVaultOfflineDB'); }
+            } catch (e) {}
+        })();
+    </script>
+    {% endif %}
 
 </body>
 </html>

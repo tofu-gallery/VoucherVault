@@ -1,3 +1,4 @@
+{# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): the notice while the copy has no account, the sign-in error, the source link and the offline cache cleared. VoucherVault is GPL-3.0 (LICENSE.md). #}
 {% load static %}
 {% load extras %}
 {% load i18n %}
@@ -135,6 +136,21 @@
         <div class="logo-container">
             <a href="/"><img title="VoucherVault" src="{% static 'assets/img/logo.svg' %}" width="50px" alt=""></a>
         </div>
+        {% if tofu_copy and tofu_no_account %}
+        <div class="tofu-notice" role="status" style="background: #fff8e1; color: #3b2f00; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.9rem; line-height: 1.45;">
+            <strong>This VoucherVault has no account yet.</strong>
+            {% with state=tofu_admin_password_state %}
+            {% if state == "short" %}
+            <p style="margin: 6px 0 0;">The password saved as {{ tofu_admin_password_setting }} is shorter than {{ tofu_admin_password_min_length }} characters, so no account was made. Save a longer one and deploy the app again.</p>
+            {% else %}
+            <p style="margin: 6px 0 0;">Nobody can sign in until its owner makes the first one. On Tofu, open this app's Keys &amp; settings page, add {{ tofu_admin_password_setting }} with the password you want (at least {{ tofu_admin_password_min_length }} characters) and turn on Hide this value after saving. Then deploy the app again and sign in here with the username {{ tofu_admin_username }}.</p>
+            {% endif %}
+            {% endwith %}
+        </div>
+        {% endif %}
+        {% if form.errors %}
+        <div class="alert alert-danger" role="alert" style="font-size: 0.9rem; padding: 8px 12px;">{% trans "Your username and password didn't match. Please try again." %}</div>
+        {% endif %}
         {% if not "OIDC_ENABLED"|env %}
         <form method="post" action="{% url 'login' %}">
             <input type="hidden" name="next" value="{{next}}" />
@@ -161,6 +177,11 @@
             {% csrf_token %}
             <button type="submit" class="btn btn-secondary"><i class="bi bi-person-gear toggle-sidebar-btn"></i> {% trans "Admin Panel" %}</button>
         </form>
+        {% if tofu_source_url %}
+        <p class="tofu-source" style="text-align: center; margin: 18px 0 0; font-size: 0.85rem; color: #bbbbbb;">
+            VoucherVault is free software (GPL-3.0). <a href="{{ tofu_source_url }}" rel="noopener" style="color: #00c9ff;">Source code</a>
+        </p>
+        {% endif %}
     </div>
 
     {% if not "OIDC_ENABLED"|env %}
@@ -168,6 +189,28 @@
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('username').focus();
         });
+    </script>
+    {% endif %}
+
+    {% if tofu_copy %}
+    <script>
+        // Tofu: a signed-out browser keeps no copy of the previous person's pages, codes or PINs (upstream issue #119):
+        // the offline cache, the service worker's own caches and the offline database are cleared here.
+        (function () {
+            try {
+                if (window.caches) {
+                    caches.keys().then(function (names) {
+                        names.filter(function (n) { return n.indexOf('vouchervault-') === 0; })
+                             .forEach(function (n) { caches.delete(n); });
+                    });
+                }
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+                }
+                localStorage.removeItem('offline_cache_timestamp');
+                if (window.indexedDB) { indexedDB.deleteDatabase('VoucherVaultOfflineDB'); }
+            } catch (e) {}
+        })();
     </script>
     {% endif %}
 

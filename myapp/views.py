@@ -1,3 +1,6 @@
+# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): attachments only where the copy can
+# keep files (myapp/tofu.py), the signed-out page clears the offline cache (upstream issue #119), and only an
+# item's owner can delete one of its transactions. VoucherVault is GPL-3.0 (LICENSE.md).
 import qrcode
 import io
 import base64
@@ -28,6 +31,7 @@ from django.db.models import Count, Sum, Q, F, ExpressionWrapper, DecimalField
 from django.db.models.functions import Coalesce
 from django.db.models import Value
 from django.utils.text import get_valid_filename
+from .tofu import uploads_enabled
 
 apprise_txt = _('Apprise URLs were already configured. Will not display them again here to protect secrets. You can freely re-configure the URLs now and hit update though.')
 
@@ -51,7 +55,11 @@ def post_logout(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
     else:
-        return render(request, 'registration/post-logout.html')
+        response = render(request, 'registration/post-logout.html')
+        # Tofu: the offline cache keeps pages with codes and PINs; a shared browser must not show them to the next
+        # person (upstream issue #119). The page's own script also clears them where this header is not honoured.
+        response['Clear-Site-Data'] = '"cache", "storage"'
+        return response
 
 @require_GET
 def offline(request):
@@ -372,7 +380,7 @@ def create_item(request):
                 return render(request, 'create-item.html', {'form': form})
 
             # Handle file upload
-            if 'file' in request.FILES:
+            if uploads_enabled() and 'file' in request.FILES:
                 file = request.FILES['file']
                 username = str(item.user)
                 user_folder = os.path.join('uploads', username)
@@ -436,7 +444,7 @@ def edit_item(request, item_uuid):
                     return render(request, 'edit-item.html', {'form': form, 'item': item})
                     
             # Handle file upload
-            if 'file' in request.FILES:
+            if uploads_enabled() and 'file' in request.FILES:
                 file = request.FILES['file']
                 username = str(item.user)
                 user_folder = os.path.join('uploads', username)
@@ -502,7 +510,7 @@ def delete_item(request, item_uuid):
 @require_POST
 @login_required
 def delete_transaction(request, transaction_id):
-    transaction = get_object_or_404(Transaction, id=transaction_id)
+    transaction = get_object_or_404(Transaction, id=transaction_id, item__user=request.user)
     item = transaction.item
     # Delete the transaction
     transaction.delete()
