@@ -207,11 +207,49 @@ administrator creates in the Admin Settings, and it lists every code and PIN: cr
 - **Found and fixed on the way:** `/serviceworker.js` answered 500 under an ASCII locale (django-pwa reads it with
   the default encoding); the image now sets `LANG=C.UTF-8`. A gallery review found the notice's overflow (above).
 
+### After the first deployment on Tofu (2026-10-27)
+
+The first deployment of pin/2026-10-27 on Tofu (a stand-in copy on Tofu's QA account) built the image, compiled uWSGI,
+bound port 80 as root and dropped to `www-data` (`setuid() to 33`), and its schema step made the 16 tables through
+Tofu's pooler, none without row-level security (Tofu's read of the database). Tofu then refused it: each start answered
+Tofu's `GET /` with 400 (`DisallowedHost`), and the deploy's answer carried the safety check's 16 "no access rules"
+warnings, all in `myapp/tofu_schema.sql`. Checked again on this Mac for the fix, from `git archive` with every file's
+mode removed, each start being `/bin/sh tofu-entrypoint.sh` as in the image, `HOME` a `chmod 000` folder and the
+TLS-only PostgreSQL 14 with `anon` and `authenticated`:
+
+- **The `Host` header:** pin/2026-10-27.1 answered `GET /` with 400 for `Host: some-name.vercel.app` and
+  `Host: 10.1.2.3:3000` (302 only for `DOMAIN`'s host), as on Tofu. Now, with `DOMAIN=https://vouchervault-test.trytofu.app`
+  and secure cookies, `GET /` with `Host: some-name.vercel.app`, `10.1.2.3:3000`, `localhost:8080`, with
+  `X-Forwarded-Host: other.example`, and with a deployment-style host in `Host` and `X-Forwarded-Host` and
+  `X-Forwarded-Proto: https`, went `/` -> `/en/` -> `/accounts/login/?next=/en/` -> `/en/accounts/login/?next=/en/` -> 200
+  every time (three relative redirects on the same address; Tofu's check follows up to five), and
+  `/en/accounts/login/` and `/en/accounts/password_reset/` answered 200 for each. A wrong sign-in posted with the copy's
+  own `Origin` passed the CSRF check ("didn't match"); with `Origin: https://evil.example` it was refused, 403, and so it
+  was when the proxy named another address than the copy's (the copy's `Origin` then still passed, through
+  `CSRF_TRUSTED_ORIGINS`).
+- **The password-reset email** (Django's test client with its in-memory outbox, `Host: evil.example`): with upstream's
+  URLs its link and subject named `http://evil.example`; with `myproject/tofu_urls.py`, `https://vouchervault-test.trytofu.app`.
+- **Nothing else turns Tofu's check away:** no `SECURE_SSL_REDIRECT` and no redirect to an absolute or `http://`
+  address; the CSRF check applies to forms only; the content-security and referrer headers change no status; the
+  language redirect ends after three hops; the sign-in page's one database read (whether any account exists) comes
+  after the schema step, which runs before uWSGI binds the port.
+- **The snapshot alone** (`psql -f myapp/tofu_schema.sql` on an empty database): 16 tables, all 16 with row-level
+  security, `django_migrations` 48 rows. `tofu_schema --make-snapshot` on an empty database wrote this file (pg_dump
+  14.24): the previous one plus the 16 lines.
+- **Rule 4:** five starts at the same moment on an empty database all came up and answered 200; one logged *"empty
+  database: applied the snapshot of 48 migrations"* (0.06 s), the other four *"up to date"* after waiting 0.06-0.11 s for
+  the lock, and none had a table left to turn row-level security on; 16 tables, all with row-level security, 48
+  migrations, no error in any log. A sixth start on that database: *"up to date"* in 0.02 s.
+- **`live-check.py`:** RESULT PASS against a fresh copy (14 requests) and against one whose owner saved
+  `VOUCHERVAULT_ADMIN_PASSWORD` (36 requests: `admin` made from it, a gift card and an EAN-13 loyalty card made, read
+  back, spent from and deleted).
+
 ## What only a real deploy can verify
 
-- that Tofu's container build installs ghostscript and compiles uWSGI within its build limits, and that uWSGI binds
-  port 80 as root and drops to `www-data` (here it ran as an ordinary user);
-- the schema step through Tofu's transaction pooler and its first-start time, against the 4-10 starts Tofu makes;
+- that Tofu's check of a new deployment's own address now gets the sign-in page and puts it online (which host that
+  check names could not be read: the runtime log hides the host Django refused), with no warning in the deploy's answer;
+- the schema step's first-start time on Tofu, and the sign-in page's database read from uWSGI's `www-data` workers
+  (rule 5; the first deployment never got that far);
 - `DOMAIN` with the proxy's `X-Forwarded-Host`, Django's CSRF check from the copy's own address, and the secure
   cookies over HTTPS;
 - the service worker, offline cache and `Clear-Site-Data` in a real phone browser, and the camera scanner (it needs
