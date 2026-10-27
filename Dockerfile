@@ -8,9 +8,13 @@
 # interpreter, because Tofu's build keeps no file modes.
 FROM python:3.12.13-slim
 
-# The version upstream's footer and service worker show (package.json).
+# The version upstream's footer shows (package.json).
 ARG VERSION=1.30.5
+# LANG: uWSGI's embedded Python takes its default text encoding from the locale, and django-pwa reads the service
+# worker (which holds non-ASCII characters) with that default: under an ASCII locale /serviceworker.js answered
+# 500. The base image sets C.UTF-8 too; saying it here keeps it whatever the base image does.
 ENV VERSION=$VERSION \
+    LANG=C.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
