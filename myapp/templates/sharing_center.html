@@ -1,3 +1,4 @@
+{# Modified by Tofu (2026-10-27) for Tofu's app gallery copy (see TOFU.md): shop logos use the owner's own logo.dev key (LOGO_DEV_TOKEN), not one committed here. VoucherVault is GPL-3.0 (LICENSE.md). #}
 {% extends "base.html" %}
 {% load i18n %}
 {% load static %}
@@ -517,9 +518,9 @@ body.dark-mode .status-badge.shared-by-me {
         <div class="item-card-content">
           <!-- Top Row: Logo + Info -->
           <div class="card-top-row">
-            {% if entry.item.logo_slug %}
+            {% if entry.item.logo_slug and tofu_logo_token %}
             <img class="item-logo" 
-                 src="https://img.logo.dev/{{ entry.item.logo_slug }}?token=pk_NaUHDkw4SSeHCapveLJtjg" 
+                 src="https://img.logo.dev/{{ entry.item.logo_slug|urlencode }}?token={{ tofu_logo_token|urlencode }}" 
                  alt="{{ entry.item.issuer }}"
                  onerror="this.onerror=null;this.src='data:image/png;base64,{{ entry.qr_code_base64 }}';this.style.filter='blur(2px)';">
             {% else %}
