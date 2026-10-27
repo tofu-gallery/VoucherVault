@@ -111,7 +111,8 @@ Every commit on `tofu` says why in its message. In short:
   answers `Clear-Site-Data: "cache", "storage"` and, like the sign-in page, clears the service worker's caches, the
   offline database and the offline timestamp in the page itself.
 - **Sign-in page**: the notice while there is no account, and "didn't match" after a wrong password (upstream showed
-  the empty form again).
+  the empty form again). The notice shows the setting's name and the username as code, so the long name fits on one
+  line inside the notice (the sign-in card is 300px wide on every screen) and still wraps inside it with larger text.
 - **A fix**: deleting a transaction looked it up by id alone, so any signed-in person who knew an id could delete
   another person's; it now needs the item's owner.
 - **Removed**: three `.pyc` files upstream committed in `myapp/management/commands/__pycache__`.
@@ -181,10 +182,16 @@ administrator creates in the Admin Settings, and it lists every code and PIN: cr
 - **Phone and desktop** (headless Chromium, 390x844 touch and 1200x750): the sign-in page, inventory, dashboard,
   sharing center, new-item form, notifications and three item pages: no page error, no console error, nothing wider
   than the screen.
-- **`live-check.py`** (kept beside this fork, not in it): RESULT PASS against a fresh copy and against one whose
-  owner saved the password.
+- **The sign-in notice** (headless Chromium with the system font, 390x844 touch and 1200x750, every character's box
+  measured): before the fix, `VOUCHERVAULT_ADMIN_PASSWORD` ran 8px past the notice's 232px of text and its last
+  letter left the yellow box for the card's near-black background; now every character stays inside, the name on one
+  line (205px, monospace), and with the page's text at 125% it wraps inside the box. The same for the
+  short-password message (a 7-character password made no account and the page said so).
+- **`live-check.py`** (kept beside this fork, not in it): RESULT PASS against a fresh copy (again after the notice
+  fix) and against one whose owner saved the password (before it; the fix changed only the notice, which a copy with
+  an account does not show).
 - **Found and fixed on the way:** `/serviceworker.js` answered 500 under an ASCII locale (django-pwa reads it with
-  the default encoding); the image now sets `LANG=C.UTF-8`.
+  the default encoding); the image now sets `LANG=C.UTF-8`. A gallery review found the notice's overflow (above).
 
 ## What only a real deploy can verify
 
