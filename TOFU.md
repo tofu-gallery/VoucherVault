@@ -91,9 +91,19 @@ Every commit on `tofu` says why in its message. In short:
   still `/root`; a `SECRET_KEY` derived from `DATABASE_URL` (the SHA-256 of `vouchervault-secret-key:` and the URL)
   instead of upstream's random one per process, which would sign people out between Tofu's processes, so changing
   `DATABASE_URL` signs everyone out, and a `SECRET_KEY` the owner saves as a hidden value wins; the proxy's scheme and
-  host (`X-Forwarded-Proto`, `X-Forwarded-Host`); secure cookies and one year of HSTS without `includeSubDomains` or
-  preload; sessions of 14 days (upstream: 30 minutes, ended with the browser) for a wallet opened at the till; UTC;
-  no `django_celery_beat`; Django's warnings in the runtime log.
+  host (`X-Forwarded-Proto`, `X-Forwarded-Host`) and any `Host` header (next point); secure cookies and one year of
+  HSTS without `includeSubDomains` or preload; sessions of 14 days (upstream: 30 minutes, ended with the browser) for a
+  wallet opened at the till; UTC; no `django_celery_beat`; Django's warnings in the runtime log.
+- **Any `Host` header is answered** (`ALLOWED_HOSTS = ["*"]`, as tofu-gallery/babybuddy and linkding answer on Tofu):
+  before Tofu puts a new deployment online, it opens the deployment's home page at that deployment's own address, which
+  is neither the copy's address nor one `DOMAIN` names, and it refuses a deployment that answers 400 there. Upstream's
+  `ALLOWED_HOSTS`, made from `DOMAIN`, answered 400 (`DisallowedHost`), and the first deployment of pin/2026-10-27 on
+  Tofu was refused for it. What that check guarded stays guarded: Django's CSRF check still refuses a form sent from
+  another site (it trusts the address the visitor used and `DOMAIN`'s addresses, `CSRF_TRUSTED_ORIGINS`), and the one
+  link in the app that was built from the `Host` header now names `DOMAIN`'s first address instead. That link is in the
+  email of Django's password-reset page, which upstream's URLs include (`/<language>/accounts/password_reset/`) though no
+  page links to it, and which a copy has no mail server to send; `myproject/tofu_urls.py` (new, the `ROOT_URLCONF`)
+  puts that page, so configured, in front of upstream's unchanged `myproject/urls.py`.
 - **`myapp/tofu_schema.py`, `myapp/management/commands/tofu_schema.py`, `myapp/tofu_schema.sql`** (new): the schema
   step and the first account (above).
 - **`myapp/tofu.py`** (new): what the pages read (the source link, the owner's logo key, the sign-in notice).
@@ -129,8 +139,8 @@ Files of upstream's that we changed carry a dated "Modified by Tofu (2026-10-27)
 - **No attachments** (above), and **no shop logos** until the owner saves `LOGO_DEV_TOKEN`.
 - **Other phones see a change on their next page load.** Nothing is pushed live between devices; a page kept for
   offline use shows what it had when it was cached, until "Cache for Offline" is pressed again.
-- **A domain connected later** has to be added to `DOMAIN` (comma-separated, as upstream reads it), then deploy again:
-  Django answers 400 to a host it was not told about.
+- **A domain connected later** goes into `DOMAIN` too (comma-separated, as upstream reads it), then deploy again, so that
+  Django's CSRF check trusts a form sent from it whatever address Tofu's proxy names (any `Host` is answered).
 - **Time zone** is UTC unless `TZ` is saved.
 
 ## Keep a copy private

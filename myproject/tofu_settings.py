@@ -86,13 +86,26 @@ elif _database_url:
     SECRET_KEY = hashlib.sha256(("vouchervault-secret-key:" + _database_url).encode()).hexdigest()
 
 # Tofu serves the copy over HTTPS at its own address, through Tofu's proxy, which says in X-Forwarded-Proto and
-# X-Forwarded-Host which scheme and address the visitor used. Upstream's DOMAIN (which a gallery copy sets to its own
-# address) still makes ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS in settings.py; a domain connected later is added to
-# DOMAIN, comma-separated. localhost answers too, for a request from inside the container.
+# X-Forwarded-Host which scheme and address the visitor used.
+#
+# Any Host header is answered. Before Tofu puts a new deployment online, it opens the deployment's home page at that
+# deployment's own address, which is neither the copy's address nor one DOMAIN names, and it refuses a deployment that
+# answers 400 there. Upstream's ALLOWED_HOSTS, made from DOMAIN, answered that request 400 (DisallowedHost), so a copy's
+# first deployment was refused and never went online. tofu-gallery/babybuddy and linkding answer any host on Tofu too.
+# What the check guarded stays guarded: nothing in the app builds a link from the Host header but Django's
+# password-reset email, which names DOMAIN's address instead (myproject/tofu_urls.py), and Django's CSRF check still
+# refuses a form posted from another site. Upstream's DOMAIN (which a gallery copy sets to its own address) still makes
+# CSRF_TRUSTED_ORIGINS in settings.py; a domain connected later is added to DOMAIN, comma-separated.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
-if "localhost" not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append("localhost")
+ALLOWED_HOSTS = ["*"]
+
+# The copy's own address, the first of DOMAIN's (read as upstream reads it), which Django's password-reset email names
+# in its link and its text in place of the request's Host header: myproject/tofu_urls.py puts that page in front of
+# upstream's URLs.
+_address = DOMAIN.split(",")[0].strip().rstrip("/").replace("http://", "").replace("https://", "") or "localhost"
+TOFU_EMAIL_ADDRESS = {"protocol": "https", "domain": _address, "site_name": _address}
+ROOT_URLCONF = "myproject.tofu_urls"
 
 # Cookies only over HTTPS, which a copy always has; SECURE_COOKIES=false (upstream's setting) turns it off.
 SECURE_COOKIES = _flag("SECURE_COOKIES", True)
