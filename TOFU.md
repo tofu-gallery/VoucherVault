@@ -64,18 +64,22 @@ which follows tofu-gallery/babybuddy's, checked on Tofu) instead:
    open for the whole step, so one start at a time does the schema work and the others wait for it (through the
    transaction pooler an open transaction keeps one server connection, and the lock ends with the transaction, also
    when a start dies; a session-level lock would not hold through the pooler);
-2. on an empty database, applies `myapp/tofu_schema.sql` in one statement: the schema and the rows `migrate` leaves
-   on a new database (content types and permissions), with `django_migrations` filled in. It is used only while every
-   migration file it was made from is unchanged (their SHA-256 sums are in its first line); otherwise, and for
-   migrations newer than it, `migrate` runs as upstream's start did. A database that is up to date skips `migrate`;
-3. turns row-level security on, with no policy, for every table of the app that lacks it, when the database has
-   Supabase's Data API roles (`anon`, `authenticated`): every database Tofu makes today opens new tables in `public`
-   to those roles. The app's own connection owns the tables and is not limited by it;
+2. on an empty database, applies `myapp/tofu_schema.sql` in one statement: the schema, with row-level security on
+   (no policy) for each of its 16 tables, and the rows `migrate` leaves on a new database (content types and
+   permissions), with `django_migrations` filled in. It is used only while every migration file it was made from is
+   unchanged (their SHA-256 sums are in its first line); otherwise, and for migrations newer than it, `migrate` runs as
+   upstream's start did. A database that is up to date skips `migrate`;
+3. turns row-level security on, with no policy, for every table of the app that lacks it (a table a later `migrate`
+   made), when the database has Supabase's Data API roles (`anon`, `authenticated`): every database Tofu makes today
+   opens new tables in `public` to those roles. The app's own connection owns the tables and is not limited by it;
 4. makes the first account (above).
 
 The snapshot is remade from an empty scratch database after a change to the models' migrations:
 `DJANGO_SETTINGS_MODULE=myproject.tofu_settings DATABASE_URL=... python manage.py tofu_schema --make-snapshot`
-(needs `pg_dump`). `tofu-entrypoint.sh` retries a failed step up to five times, 5 seconds apart.
+(needs `pg_dump`). It writes an `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;` line for every table its own
+`CREATE TABLE` lines make, so Tofu's safety check, which reads a copy's SQL files, finds no table without access rules
+and a copy's deploy answer carries no such warning. `tofu-entrypoint.sh` retries a failed step up to five times, 5
+seconds apart.
 
 ## What we changed, and why
 
